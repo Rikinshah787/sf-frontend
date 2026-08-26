@@ -2,6 +2,7 @@ import {
   CONTACT_FIELDS,
   contactInputSchema,
   formDataToValues,
+  isSafeImageDataUrl,
   zodFieldErrors,
 } from "@/lib/contacts/schema";
 
@@ -65,6 +66,35 @@ describe("contactInputSchema", () => {
       first_name: "First name must be 100 characters or fewer",
       postal_code: "Postal code must be 20 characters or fewer",
     });
+  });
+});
+
+describe("isSafeImageDataUrl", () => {
+  it("accepts bitmap image data URLs", () => {
+    expect(isSafeImageDataUrl("data:image/png;base64,iVBORw0KGgo=")).toBe(true);
+    expect(isSafeImageDataUrl("data:image/bmp;base64,Qk0=")).toBe(true);
+    expect(isSafeImageDataUrl("data:IMAGE/PNG;base64,iVBORw0KGgo=")).toBe(true);
+  });
+
+  it("rejects SVG in any casing and with whitespace tricks", () => {
+    expect(isSafeImageDataUrl("data:image/svg+xml;base64,PHN2Zy8+")).toBe(false);
+    expect(isSafeImageDataUrl("data:image/SVG+XML;base64,PHN2Zy8+")).toBe(false);
+    expect(isSafeImageDataUrl("data:image/svg+xml ;base64,PHN2Zy8+")).toBe(false);
+    expect(isSafeImageDataUrl("data:image/svg+xml\t;base64,PHN2Zy8+")).toBe(false);
+    expect(isSafeImageDataUrl("data: image/svg+xml;base64,PHN2Zy8+")).toBe(false);
+  });
+
+  it("rejects non-image and structureless values", () => {
+    expect(isSafeImageDataUrl("data:text/html;base64,PGI+")).toBe(false);
+    expect(isSafeImageDataUrl("data:image/png")).toBe(false);
+    expect(isSafeImageDataUrl("http://example.com/a.png")).toBe(false);
+  });
+
+  it("rejects malformed base64 payloads, like the API does", () => {
+    expect(isSafeImageDataUrl("data:image/png,rawbytes")).toBe(false); // no ;base64,
+    expect(isSafeImageDataUrl("data:image/png;base64,")).toBe(false); // empty payload
+    expect(isSafeImageDataUrl("data:image/png;base64,@@bad@@")).toBe(false);
+    expect(isSafeImageDataUrl("data:image/png;base64,iVBORw0KG")).toBe(false); // bad padding
   });
 });
 

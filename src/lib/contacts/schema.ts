@@ -9,6 +9,23 @@ import type { ContactInput } from "./types";
  * and anything it rejects anyway is surfaced by `toFieldErrors` in `./api.ts`.
  */
 
+/** Matches the API's photo limit: ~1 MiB of image bytes once base64-decoded. */
+export const PHOTO_MAX_LENGTH = 1_400_000;
+
+/**
+ * True when the value is a base64 data URL the API will accept: a non-SVG
+ * `image/*` media type, the `;base64,` marker, and a non-empty well-formed
+ * base64 payload. The media type is parsed the way MIME sniffing does — up to
+ * the first `;`, surrounding HTTP whitespace stripped, lowercased — so tricks
+ * like `data:image/svg+xml ;base64,` cannot sneak the scriptable type through.
+ */
+export function isSafeImageDataUrl(value: string): boolean {
+  const match = /^data:([^;,]*);base64,([A-Za-z0-9+/]+={0,2})$/i.exec(value);
+  if (!match || match[2].length % 4 !== 0) return false;
+  const essence = match[1].trim().toLowerCase();
+  return essence.startsWith("image/") && essence !== "image/svg+xml";
+}
+
 /** Optional text: trimmed, and blank becomes `null` (the API clears the field). */
 function optionalText(max: number, label: string) {
   return z
@@ -52,6 +69,18 @@ export const contactInputSchema = z.object({
     .transform((value) => value || null)
     .nullable()
     .default(null),
+  photo: z
+    .string()
+    .trim()
+    .max(PHOTO_MAX_LENGTH, "Photo is too large — choose an image under 1 MB")
+    .refine(
+      // Mirrors the API: an image data URL, but never scriptable SVG.
+      (value) => !value || isSafeImageDataUrl(value),
+      "Photo must be a bitmap image file (SVG isn't supported)",
+    )
+    .transform((value) => value || null)
+    .nullable()
+    .default(null),
 }) satisfies z.ZodType<ContactInput, unknown>;
 
 export type ContactFormValues = z.input<typeof contactInputSchema>;
@@ -77,7 +106,7 @@ export function zodFieldErrors(
 export interface ContactFieldSpec {
   name: keyof ContactInput;
   label: string;
-  type?: "text" | "email" | "tel" | "textarea";
+  type?: "text" | "email" | "tel" | "textarea" | "photo";
   required?: boolean;
   maxLength: number;
   placeholder?: string;
@@ -129,6 +158,13 @@ export const CONTACT_FIELD_GROUPS: ContactFieldGroup[] = [
         maxLength: 40,
         placeholder: "+1-415-555-0101",
         autoComplete: "tel",
+      },
+      {
+        name: "photo",
+        label: "Photo",
+        type: "photo",
+        maxLength: PHOTO_MAX_LENGTH,
+        wide: true,
       },
     ],
   },

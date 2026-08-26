@@ -18,6 +18,8 @@ export interface Contact {
   postal_code: string | null;
   country: string | null;
   notes: string | null;
+  /** Base64 `data:image/...` URL, or null when the contact has no photo. */
+  photo: string | null;
   created_at: string;
   updated_at: string;
   full_name: string;
