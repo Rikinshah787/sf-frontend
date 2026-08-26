@@ -13,14 +13,15 @@ import type { ContactInput } from "./types";
 export const PHOTO_MAX_LENGTH = 1_400_000;
 
 /**
- * True when the value is a data URL whose media-type *essence* is a non-SVG
- * image. Parsed the way MIME sniffing does — take the type up to the first
- * `;`/`,`, strip surrounding HTTP whitespace, lowercase — so tricks like
- * `data:image/svg+xml ;base64,` cannot sneak the scriptable type through.
+ * True when the value is a base64 data URL the API will accept: a non-SVG
+ * `image/*` media type, the `;base64,` marker, and a non-empty well-formed
+ * base64 payload. The media type is parsed the way MIME sniffing does — up to
+ * the first `;`, surrounding HTTP whitespace stripped, lowercased — so tricks
+ * like `data:image/svg+xml ;base64,` cannot sneak the scriptable type through.
  */
 export function isSafeImageDataUrl(value: string): boolean {
-  const match = /^data:([^;,]*)[;,]/.exec(value);
-  if (!match) return false;
+  const match = /^data:([^;,]*);base64,([A-Za-z0-9+/]+={0,2})$/i.exec(value);
+  if (!match || match[2].length % 4 !== 0) return false;
   const essence = match[1].trim().toLowerCase();
   return essence.startsWith("image/") && essence !== "image/svg+xml";
 }

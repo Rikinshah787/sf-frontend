@@ -89,6 +89,13 @@ describe("isSafeImageDataUrl", () => {
     expect(isSafeImageDataUrl("data:image/png")).toBe(false);
     expect(isSafeImageDataUrl("http://example.com/a.png")).toBe(false);
   });
+
+  it("rejects malformed base64 payloads, like the API does", () => {
+    expect(isSafeImageDataUrl("data:image/png,rawbytes")).toBe(false); // no ;base64,
+    expect(isSafeImageDataUrl("data:image/png;base64,")).toBe(false); // empty payload
+    expect(isSafeImageDataUrl("data:image/png;base64,@@bad@@")).toBe(false);
+    expect(isSafeImageDataUrl("data:image/png;base64,iVBORw0KG")).toBe(false); // bad padding
+  });
 });
 
 describe("formDataToValues", () => {
