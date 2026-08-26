@@ -262,21 +262,30 @@ export function formDataToValues(
  * Rebuild the address rows from a submitted form. `AddressesEditor` names its
  * controls `addresses.<row>.<field>`; rows removed in the UI simply never
  * submit, so the surviving indexes are compacted here.
+ *
+ * Storage is a Map keyed by index (never a sparse array) and indexes are
+ * capped at three digits, so a crafted `addresses.1000000000.city` payload
+ * cannot force a huge traversal; row counts beyond MAX_ADDRESSES are then
+ * rejected by the schema.
  */
 export function formDataToAddresses(formData: FormData): AddressFormRow[] {
-  const rows: Partial<AddressFormRow>[] = [];
+  const rows = new Map<number, Partial<AddressFormRow>>();
   for (const [key, value] of formData.entries()) {
-    const match = /^addresses\.(\d+)\.(type|address|city|state|postal_code|country)$/.exec(key);
+    const match = /^addresses\.(\d{1,3})\.(type|address|city|state|postal_code|country)$/.exec(key);
     if (!match) continue;
     const index = Number(match[1]);
-    (rows[index] ??= {})[match[2] as keyof AddressInput] = String(value);
+    const row = rows.get(index) ?? {};
+    row[match[2] as keyof AddressInput] = String(value);
+    rows.set(index, row);
   }
-  return rows.filter(Boolean).map((row) => ({
-    type: row.type ?? "home",
-    address: row.address ?? "",
-    city: row.city ?? "",
-    state: row.state ?? "",
-    postal_code: row.postal_code ?? "",
-    country: row.country ?? "",
-  }));
+  return [...rows.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([, row]) => ({
+      type: row.type ?? "home",
+      address: row.address ?? "",
+      city: row.city ?? "",
+      state: row.state ?? "",
+      postal_code: row.postal_code ?? "",
+      country: row.country ?? "",
+    }));
 }

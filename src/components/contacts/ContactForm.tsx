@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useMemo } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { AlertCircle, Loader2 } from "lucide-react";
@@ -58,18 +58,20 @@ export default function ContactForm({
 
   // Prefer the rows echoed back by a failed submit; fall back to the stored
   // addresses (with nulls flattened to the empty strings inputs expect).
-  const initialAddresses: AddressFormRow[] = (
-    state.values?.addresses ??
-    contact?.addresses ??
-    []
-  ).map((row) => ({
-    type: row.type,
-    address: row.address ?? "",
-    city: row.city ?? "",
-    state: row.state ?? "",
-    postal_code: row.postal_code ?? "",
-    country: row.country ?? "",
-  }));
+  // Memoized per action state: the editor adopts a new array identity as the
+  // post-submit rows, so it must not change on unrelated re-renders.
+  const initialAddresses: AddressFormRow[] = useMemo(
+    () =>
+      (state.values?.addresses ?? contact?.addresses ?? []).map((row) => ({
+        type: row.type,
+        address: row.address ?? "",
+        city: row.city ?? "",
+        state: row.state ?? "",
+        postal_code: row.postal_code ?? "",
+        country: row.country ?? "",
+      })),
+    [state, contact],
+  );
 
   return (
     <form action={formAction} noValidate className="space-y-8">

@@ -38,6 +38,17 @@ export default function AddressesEditor({
     initial.map((row, index) => ({ ...row, key: index })),
   );
   const [nextKey, setNextKey] = useState(initial.length);
+  const [syncedInitial, setSyncedInitial] = useState(initial);
+
+  // After a failed submit the server action echoes the submitted rows back
+  // through `initial` (memoized per form state). Adopt them with fresh keys —
+  // remounting the inputs — so React's post-action form reset lands on the
+  // echoed values instead of the stale first-render rows.
+  if (initial !== syncedInitial) {
+    setSyncedInitial(initial);
+    setRows(initial.map((row, index) => ({ ...row, key: nextKey + index })));
+    setNextKey(nextKey + initial.length);
+  }
 
   function addRow() {
     setRows((current) => [...current, { ...EMPTY_ROW, key: nextKey }]);
