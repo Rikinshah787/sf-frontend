@@ -9,6 +9,9 @@ import type { ContactInput } from "./types";
  * and anything it rejects anyway is surfaced by `toFieldErrors` in `./api.ts`.
  */
 
+/** Matches the API's photo limit: ~1 MiB of image bytes once base64-decoded. */
+export const PHOTO_MAX_LENGTH = 1_400_000;
+
 /** Optional text: trimmed, and blank becomes `null` (the API clears the field). */
 function optionalText(max: number, label: string) {
   return z
@@ -52,6 +55,17 @@ export const contactInputSchema = z.object({
     .transform((value) => value || null)
     .nullable()
     .default(null),
+  photo: z
+    .string()
+    .trim()
+    .max(PHOTO_MAX_LENGTH, "Photo is too large — choose an image under 1 MB")
+    .refine(
+      (value) => !value || value.startsWith("data:image/"),
+      "Photo must be an image file",
+    )
+    .transform((value) => value || null)
+    .nullable()
+    .default(null),
 }) satisfies z.ZodType<ContactInput, unknown>;
 
 export type ContactFormValues = z.input<typeof contactInputSchema>;
@@ -77,7 +91,7 @@ export function zodFieldErrors(
 export interface ContactFieldSpec {
   name: keyof ContactInput;
   label: string;
-  type?: "text" | "email" | "tel" | "textarea";
+  type?: "text" | "email" | "tel" | "textarea" | "photo";
   required?: boolean;
   maxLength: number;
   placeholder?: string;
@@ -129,6 +143,13 @@ export const CONTACT_FIELD_GROUPS: ContactFieldGroup[] = [
         maxLength: 40,
         placeholder: "+1-415-555-0101",
         autoComplete: "tel",
+      },
+      {
+        name: "photo",
+        label: "Photo",
+        type: "photo",
+        maxLength: PHOTO_MAX_LENGTH,
+        wide: true,
       },
     ],
   },
