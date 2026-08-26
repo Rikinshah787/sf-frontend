@@ -26,6 +26,9 @@ export default function PhotoInput({
   const [photo, setPhoto] = useState(defaultValue ?? "");
   const [pickError, setPickError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Monotonic token: only the latest pick (or Remove) may commit its result,
+  // so a slow FileReader can never overwrite a newer choice.
+  const pickToken = useRef(0);
 
   function onFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -41,13 +44,23 @@ export default function PhotoInput({
       return;
     }
 
+    const token = ++pickToken.current;
     const reader = new FileReader();
     reader.onload = () => {
+      if (token !== pickToken.current) return; // stale read; a newer pick or Remove won
       setPhoto(String(reader.result));
       setPickError(null);
     };
-    reader.onerror = () => setPickError("Could not read that file. Try again.");
+    reader.onerror = () => {
+      if (token !== pickToken.current) return;
+      setPickError("Could not read that file. Try again.");
+    };
     reader.readAsDataURL(file);
+  }
+
+  function removePhoto() {
+    pickToken.current += 1; // invalidate any in-flight read
+    setPhoto("");
   }
 
   return (
@@ -85,7 +98,7 @@ export default function PhotoInput({
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => setPhoto("")}
+              onClick={removePhoto}
             >
               Remove
             </Button>

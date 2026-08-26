@@ -26,6 +26,8 @@ export default function ContactAvatar({
         src={contact.photo}
         alt="" // decorative: the contact's name is always rendered beside the avatar
         aria-hidden="true"
+        loading="lazy"
+        decoding="async"
         className={`inline-block shrink-0 select-none rounded-full object-cover ${SIZES[size]}`}
       />
     );
