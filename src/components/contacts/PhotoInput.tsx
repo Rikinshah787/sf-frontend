@@ -120,7 +120,7 @@ export default function PhotoInput({
         ref={fileRef}
         id={id}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+        accept="image/*"
         className="sr-only"
         onChange={onFile}
         aria-describedby={errorId}

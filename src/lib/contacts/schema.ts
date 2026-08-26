@@ -12,6 +12,19 @@ import type { ContactInput } from "./types";
 /** Matches the API's photo limit: ~1 MiB of image bytes once base64-decoded. */
 export const PHOTO_MAX_LENGTH = 1_400_000;
 
+/**
+ * True when the value is a data URL whose media-type *essence* is a non-SVG
+ * image. Parsed the way MIME sniffing does — take the type up to the first
+ * `;`/`,`, strip surrounding HTTP whitespace, lowercase — so tricks like
+ * `data:image/svg+xml ;base64,` cannot sneak the scriptable type through.
+ */
+export function isSafeImageDataUrl(value: string): boolean {
+  const match = /^data:([^;,]*)[;,]/.exec(value);
+  if (!match) return false;
+  const essence = match[1].trim().toLowerCase();
+  return essence.startsWith("image/") && essence !== "image/svg+xml";
+}
+
 /** Optional text: trimmed, and blank becomes `null` (the API clears the field). */
 function optionalText(max: number, label: string) {
   return z
@@ -60,9 +73,8 @@ export const contactInputSchema = z.object({
     .trim()
     .max(PHOTO_MAX_LENGTH, "Photo is too large — choose an image under 1 MB")
     .refine(
-      // Mirrors the API: an image data URL, but never scriptable SVG
-      // (media types are case-insensitive, hence the /i).
-      (value) => !value || /^data:image\/(?!svg\+xml[;,])/i.test(value),
+      // Mirrors the API: an image data URL, but never scriptable SVG.
+      (value) => !value || isSafeImageDataUrl(value),
       "Photo must be a bitmap image file (SVG isn't supported)",
     )
     .transform((value) => value || null)
