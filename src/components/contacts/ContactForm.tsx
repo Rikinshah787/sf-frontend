@@ -4,13 +4,15 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { AlertCircle, Loader2 } from "lucide-react";
+import AddressesEditor from "@/components/contacts/AddressesEditor";
 import Field from "@/components/ui/Field";
 import Button, { buttonClasses } from "@/components/ui/Button";
 import { CONTACT_FIELD_GROUPS } from "@/lib/contacts/schema";
 import {
   EMPTY_FORM_STATE,
+  type AddressFormRow,
   type Contact,
-  type ContactInput,
+  type FlatContactField,
   type FormState,
 } from "@/lib/contacts/types";
 
@@ -50,9 +52,24 @@ export default function ContactForm({
 }) {
   const [state, formAction] = useActionState(action, EMPTY_FORM_STATE);
 
-  function valueFor(name: keyof ContactInput): string {
+  function valueFor(name: FlatContactField): string {
     return state.values?.[name] ?? contact?.[name] ?? "";
   }
+
+  // Prefer the rows echoed back by a failed submit; fall back to the stored
+  // addresses (with nulls flattened to the empty strings inputs expect).
+  const initialAddresses: AddressFormRow[] = (
+    state.values?.addresses ??
+    contact?.addresses ??
+    []
+  ).map((row) => ({
+    type: row.type,
+    address: row.address ?? "",
+    city: row.city ?? "",
+    state: row.state ?? "",
+    postal_code: row.postal_code ?? "",
+    country: row.country ?? "",
+  }));
 
   return (
     <form action={formAction} noValidate className="space-y-8">
@@ -95,6 +112,27 @@ export default function ContactForm({
           </div>
         </fieldset>
       ))}
+
+      <fieldset className="space-y-4">
+        <legend className="sr-only">Addresses</legend>
+
+        <div className="border-b border-hairline pb-2">
+          <h2 className="font-display text-sm font-semibold text-foreground">
+            Addresses
+          </h2>
+          <p className="text-[13px] text-muted-foreground">
+            As many as you need — each tagged Home, Work, or Other.
+          </p>
+        </div>
+
+        {state.fieldErrors?.addresses ? (
+          <p role="alert" className="text-[13px] text-destructive">
+            {state.fieldErrors.addresses}
+          </p>
+        ) : null}
+
+        <AddressesEditor initial={initialAddresses} />
+      </fieldset>
 
       <div className="flex items-center gap-2 border-t border-hairline pt-4">
         <SubmitButton label={submitLabel} />

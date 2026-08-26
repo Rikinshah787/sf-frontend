@@ -8,6 +8,7 @@ import DeleteContactButton from "@/components/contacts/DeleteContactButton";
 import { buttonClasses } from "@/components/ui/Button";
 import { getContact } from "@/lib/contacts/api";
 import { addressLine, formatTimestamp, jobLine } from "@/lib/contacts/format";
+import { ADDRESS_TYPES } from "@/lib/contacts/types";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -43,7 +44,10 @@ export default async function ContactDetailPage({ params }: PageProps) {
   if (!contact) notFound();
 
   const subtitle = jobLine(contact);
-  const address = addressLine(contact);
+  // Group by type: Home first, then Work, then Other.
+  const addresses = [...contact.addresses].sort(
+    (a, b) => ADDRESS_TYPES.indexOf(a.type) - ADDRESS_TYPES.indexOf(b.type),
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
@@ -102,7 +106,24 @@ export default async function ContactDetailPage({ params }: PageProps) {
         </Row>
         <Row label="Company">{contact.company}</Row>
         <Row label="Job title">{contact.job_title}</Row>
-        <Row label="Address">{address}</Row>
+        <Row label="Addresses">
+          {addresses.length ? (
+            <ul className="space-y-1.5">
+              {addresses.map((addr) => (
+                <li key={addr.id} className="flex items-start gap-2">
+                  <span className="mt-px inline-flex shrink-0 rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium capitalize text-secondary-foreground">
+                    {addr.type}
+                  </span>
+                  <span>
+                    {addressLine(addr) ?? (
+                      <span className="text-muted-foreground/50">—</span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </Row>
         <Row label="Notes">
           {contact.notes ? (
             <span className="whitespace-pre-wrap">{contact.notes}</span>

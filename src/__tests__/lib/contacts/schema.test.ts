@@ -1,6 +1,7 @@
 import {
   CONTACT_FIELDS,
   contactInputSchema,
+  formDataToAddresses,
   formDataToValues,
   isSafeImageDataUrl,
   zodFieldErrors,
@@ -14,11 +15,6 @@ function values(overrides: Record<string, string> = {}) {
     phone: "",
     company: "",
     job_title: "",
-    address: "",
-    city: "",
-    state: "",
-    postal_code: "",
-    country: "",
     notes: "",
     ...overrides,
   };
@@ -59,13 +55,43 @@ describe("contactInputSchema", () => {
 
   it("enforces the API's length limits", () => {
     const result = contactInputSchema.safeParse(
-      values({ first_name: "a".repeat(101), postal_code: "9".repeat(21) }),
+      values({ first_name: "a".repeat(101) }),
     );
 
     expect(zodFieldErrors(result.error!)).toEqual({
       first_name: "First name must be 100 characters or fewer",
-      postal_code: "Postal code must be 20 characters or fewer",
     });
+  });
+
+  it("accepts typed addresses and rejects unknown types", () => {
+    const row = {
+      type: "work",
+      address: "500 Office Park",
+      city: "Chicago",
+      state: "",
+      postal_code: "",
+      country: "USA",
+    };
+
+    const parsed = contactInputSchema.parse({ ...values(), addresses: [row] });
+    expect(parsed.addresses).toEqual([
+      {
+        type: "work",
+        address: "500 Office Park",
+        city: "Chicago",
+        state: null,
+        postal_code: null,
+        country: "USA",
+      },
+    ]);
+
+    const bad = contactInputSchema.safeParse({
+      ...values(),
+      addresses: [{ ...row, type: "vacation" }],
+    });
+    expect(zodFieldErrors(bad.error!).addresses).toBe(
+      "Choose Home, Work, or Other",
+    );
   });
 });
 
@@ -112,5 +138,26 @@ describe("formDataToValues", () => {
     expect(Object.keys(extracted).sort()).toEqual(
       CONTACT_FIELDS.map((field) => field.name).sort(),
     );
+  });
+});
+
+describe("formDataToAddresses", () => {
+  it("rebuilds indexed rows and compacts the gaps removed rows leave", () => {
+    const formData = new FormData();
+    formData.set("addresses.0.type", "home");
+    formData.set("addresses.0.city", "San Francisco");
+    // Row 1 was removed in the UI; row 2 survives.
+    formData.set("addresses.2.type", "work");
+    formData.set("addresses.2.city", "Chicago");
+
+    const rows = formDataToAddresses(formData);
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ type: "home", city: "San Francisco" });
+    expect(rows[1]).toMatchObject({ type: "work", city: "Chicago" });
+  });
+
+  it("returns an empty list when no address controls were submitted", () => {
+    expect(formDataToAddresses(new FormData())).toEqual([]);
   });
 });
