@@ -35,8 +35,10 @@ export default function PhotoInput({
     event.target.value = ""; // allow picking the same file again
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      setPickError("Choose an image file (PNG, JPEG, WebP…).");
+    if (!file.type.startsWith("image/") || file.type === "image/svg+xml") {
+      // SVG is rejected by the API too: it is scriptable, so it is unsafe to
+      // store and echo back as an <img> source.
+      setPickError("Choose a bitmap image (PNG, JPEG, WebP…) — SVG isn't supported.");
       return;
     }
     if (file.size > MAX_PHOTO_BYTES) {
@@ -118,7 +120,7 @@ export default function PhotoInput({
         ref={fileRef}
         id={id}
         type="file"
-        accept="image/*"
+        accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
         className="sr-only"
         onChange={onFile}
         aria-describedby={errorId}

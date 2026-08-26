@@ -60,8 +60,10 @@ export const contactInputSchema = z.object({
     .trim()
     .max(PHOTO_MAX_LENGTH, "Photo is too large — choose an image under 1 MB")
     .refine(
-      (value) => !value || value.startsWith("data:image/"),
-      "Photo must be an image file",
+      // Mirrors the API: an image data URL, but never scriptable SVG
+      // (media types are case-insensitive, hence the /i).
+      (value) => !value || /^data:image\/(?!svg\+xml[;,])/i.test(value),
+      "Photo must be a bitmap image file (SVG isn't supported)",
     )
     .transform((value) => value || null)
     .nullable()
