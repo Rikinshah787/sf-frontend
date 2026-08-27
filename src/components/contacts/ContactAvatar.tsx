@@ -6,6 +6,7 @@ const SIZES = {
   sm: "h-8 w-8 text-[11px]",
   md: "h-10 w-10 text-sm",
   lg: "h-14 w-14 text-lg",
+  xl: "h-20 w-20 text-2xl",
 } as const;
 
 /**
@@ -28,7 +29,7 @@ export default function ContactAvatar({
         aria-hidden="true"
         loading="lazy"
         decoding="async"
-        className={`inline-block shrink-0 select-none rounded-full object-cover ${SIZES[size]}`}
+        className={`inline-block shrink-0 select-none rounded-full bg-secondary object-cover shadow-sm ring-1 ring-border ${SIZES[size]}`}
       />
     );
   }
@@ -41,7 +42,7 @@ export default function ContactAvatar({
     <span
       aria-hidden="true"
       style={style}
-      className={`contact-avatar inline-flex shrink-0 select-none items-center justify-center rounded-full font-display font-semibold ${SIZES[size]}`}
+      className={`contact-avatar inline-flex shrink-0 select-none items-center justify-center rounded-full font-display font-semibold ring-1 ring-inset ring-foreground/10 ${SIZES[size]}`}
     >
       {initials(contact)}
     </span>

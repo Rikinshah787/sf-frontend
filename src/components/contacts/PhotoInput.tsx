@@ -1,16 +1,27 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { ImagePlus } from "lucide-react";
 import Button from "@/components/ui/Button";
 
 /** Client-side cap on the picked file itself (the base64 form grows ~4/3). */
 export const MAX_PHOTO_BYTES = 1024 * 1024;
 
+/** Matches the client/server validation: bitmap images only, never SVG. */
+const ACCEPT = "image/png,image/jpeg,image/webp,image/bmp";
+
+/** "438 KB"-style size for the picked-file summary. */
+function formatSize(bytes: number): string {
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
 /**
  * Photo picker for the contact form. The chosen image is read into a base64
  * `data:image/...` URL and submitted through a hidden input, so the form stays
  * a plain POST and the server action never handles file uploads.
+ *
+ * The preview doubles as a drop zone (click or drag and drop); the buttons
+ * remain for keyboard and mobile users.
  */
 export default function PhotoInput({
   id,
@@ -24,66 +35,110 @@ export default function PhotoInput({
   errorId?: string;
 }) {
   const [photo, setPhoto] = useState(defaultValue ?? "");
+  const [file, setFile] = useState<{ name: string; size: number } | null>(null);
+  const [reading, setReading] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
+  const [removed, setRemoved] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   // Monotonic token: only the latest pick (or Remove) may commit its result,
   // so a slow FileReader can never overwrite a newer choice.
   const pickToken = useRef(0);
 
-  function onFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = ""; // allow picking the same file again
-    if (!file) return;
+  function readFile(picked: File) {
+    setRemoved(false);
 
-    if (!file.type.startsWith("image/") || file.type === "image/svg+xml") {
+    if (!picked.type.startsWith("image/") || picked.type === "image/svg+xml") {
       // SVG is rejected by the API too: it is scriptable, so it is unsafe to
       // store and echo back as an <img> source.
       setPickError("Choose a bitmap image (PNG, JPEG, WebP…) — SVG isn't supported.");
       return;
     }
-    if (file.size > MAX_PHOTO_BYTES) {
-      setPickError("That image is over 1 MB — pick a smaller one.");
+    if (picked.size > MAX_PHOTO_BYTES) {
+      setPickError(`${picked.name} is ${formatSize(picked.size)} — pick one under 1 MB.`);
       return;
     }
 
     const token = ++pickToken.current;
+    setReading(true);
     const reader = new FileReader();
     reader.onload = () => {
       if (token !== pickToken.current) return; // stale read; a newer pick or Remove won
       setPhoto(String(reader.result));
+      setFile({ name: picked.name, size: picked.size });
       setPickError(null);
+      setReading(false);
     };
     reader.onerror = () => {
       if (token !== pickToken.current) return;
       setPickError("Could not read that file. Try again.");
+      setReading(false);
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(picked);
+  }
+
+  function onFile(event: ChangeEvent<HTMLInputElement>) {
+    const picked = event.target.files?.[0];
+    event.target.value = ""; // allow picking the same file again
+    if (picked) readFile(picked);
+  }
+
+  function onDrop(event: DragEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    const dropped = event.dataTransfer.files?.[0];
+    if (dropped && !reading) readFile(dropped);
   }
 
   function removePhoto() {
     pickToken.current += 1; // invalidate any in-flight read
     setPhoto("");
+    setFile(null);
+    setReading(false);
+    setRemoved(true);
   }
 
+  const summary = file
+    ? `${file.name} · ${formatSize(file.size)}`
+    : photo
+      ? "Current photo"
+      : "Click to upload or drag and drop";
+
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
       <input type="hidden" name={name} value={photo} />
 
-      {photo ? (
-        // eslint-disable-next-line @next/next/no-img-element -- base64 data URL; next/image adds nothing here
-        <img
-          src={photo}
-          alt="Contact photo preview"
-          className="h-14 w-14 shrink-0 rounded-full border border-border object-cover"
-        />
-      ) : (
-        <span
-          aria-hidden="true"
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground"
-        >
-          <ImagePlus className="h-5 w-5" strokeWidth={1.75} />
+      <button
+        type="button"
+        disabled={reading}
+        onClick={() => fileRef.current?.click()}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={onDrop}
+        aria-describedby={errorId}
+        className="flex w-full items-center gap-3 rounded-lg border border-dashed border-border px-4 py-3 text-left transition-colors hover:border-primary/60 hover:bg-secondary/30 disabled:pointer-events-none disabled:opacity-60 sm:w-80"
+      >
+        {photo ? (
+          // eslint-disable-next-line @next/next/no-img-element -- base64 data URL; next/image adds nothing here
+          <img
+            src={photo}
+            alt="Current contact photo"
+            className="h-14 w-14 shrink-0 rounded-full border border-border object-cover"
+          />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground"
+          >
+            <ImagePlus className="h-5 w-5" strokeWidth={1.75} />
+          </span>
+        )}
+        <span className="min-w-0">
+          <span className="block truncate text-[13px] font-medium text-foreground">
+            {summary}
+          </span>
+          <span className="block text-[11px] text-muted-foreground">
+            PNG, JPEG, WebP or BMP up to 1 MB. No photo shows initials instead.
+          </span>
         </span>
-      )}
+      </button>
 
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
@@ -91,23 +146,26 @@ export default function PhotoInput({
             type="button"
             variant="secondary"
             size="sm"
+            disabled={reading}
             onClick={() => fileRef.current?.click()}
           >
-            {photo ? "Change photo" : "Upload photo"}
+            {reading ? "Preparing photo…" : photo ? "Change photo" : "Upload photo"}
           </Button>
           {photo ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
+              disabled={reading}
               onClick={removePhoto}
             >
               Remove
             </Button>
           ) : null}
         </div>
-        <p className="text-[11px] text-muted-foreground">
-          Any image up to 1 MB. Contacts without a photo show their initials.
+        {/* One polite live region: reading progress and removal confirmations. */}
+        <p aria-live="polite" className="text-[11px] text-muted-foreground">
+          {reading ? "Preparing photo…" : removed ? "Photo removed." : ""}
         </p>
         {pickError ? (
           <p role="alert" className="text-[13px] text-destructive">
@@ -120,7 +178,7 @@ export default function PhotoInput({
         ref={fileRef}
         id={id}
         type="file"
-        accept="image/*"
+        accept={ACCEPT}
         className="sr-only"
         onChange={onFile}
         aria-describedby={errorId}
