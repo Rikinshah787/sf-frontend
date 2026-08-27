@@ -114,7 +114,8 @@ just means an empty database, not a broken app.
 
 ### `/contacts/[id]` — a single contact
 
-![A single contact's detail page](docs/contact.png)
+![A single contact's detail page]
+<img width="1876" height="1054" alt="image" src="https://github.com/user-attachments/assets/de723935-c39c-4095-872f-b0832b7cc5ef" />
 
 Click a row to get here. It confirms the detail read path works end to end:
 
