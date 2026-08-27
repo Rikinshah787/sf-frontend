@@ -22,11 +22,11 @@ export default function ContactsTable({
         <caption className="sr-only">
           Contacts, sorted by {query.sortBy.replace("_", " ")} {query.order}
         </caption>
-        <thead className="border-b border-hairline bg-secondary/40 text-left text-[13px] font-medium">
+        <thead className="border-b border-hairline bg-secondary/40 text-left text-[11px] font-semibold uppercase tracking-wider">
           <tr>
             <SortHeader field="last_name" label="Name" query={query} />
             <SortHeader field="email" label="Email" query={query} />
-            <th scope="col" className="hidden px-4 py-2.5 text-muted-foreground sm:table-cell">
+            <th scope="col" className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
               Phone
             </th>
             <SortHeader
@@ -35,7 +35,7 @@ export default function ContactsTable({
               query={query}
               className="hidden lg:table-cell"
             />
-            <th scope="col" className="px-4 py-2.5 text-right text-muted-foreground">
+            <th scope="col" className="px-4 py-3 text-right text-muted-foreground">
               <span className="sr-only">Actions</span>
             </th>
           </tr>
@@ -50,7 +50,7 @@ export default function ContactsTable({
                 key={contact.id}
                 className="border-b border-hairline last:border-b-0 transition-colors hover:bg-secondary/30"
               >
-                <td className="px-4 py-2.5">
+                <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <ContactAvatar contact={contact} size="sm" />
                     <div className="min-w-0">
@@ -69,7 +69,7 @@ export default function ContactsTable({
                   </div>
                 </td>
 
-                <td className="max-w-[16rem] px-4 py-2.5">
+                <td className="max-w-[16rem] px-4 py-3">
                   <a
                     href={`mailto:${contact.email}`}
                     className="block truncate text-muted-foreground hover:text-primary"
@@ -78,7 +78,7 @@ export default function ContactsTable({
                   </a>
                 </td>
 
-                <td className="hidden whitespace-nowrap px-4 py-2.5 text-muted-foreground sm:table-cell">
+                <td className="hidden whitespace-nowrap px-4 py-3 text-muted-foreground sm:table-cell">
                   {contact.phone ? (
                     <a href={`tel:${contact.phone}`} className="hover:text-primary">
                       {contact.phone}
@@ -88,7 +88,7 @@ export default function ContactsTable({
                   )}
                 </td>
 
-                <td className="hidden max-w-[14rem] px-4 py-2.5 text-muted-foreground lg:table-cell">
+                <td className="hidden max-w-[14rem] px-4 py-3 text-muted-foreground lg:table-cell">
                   <span className="block truncate">
                     {contact.company ?? (
                       <span className="text-muted-foreground/50">—</span>
@@ -96,7 +96,7 @@ export default function ContactsTable({
                   </span>
                 </td>
 
-                <td className="px-4 py-2.5">
+                <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1">
                     <Link
                       href={`/contacts/${contact.id}/edit`}

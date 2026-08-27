@@ -41,7 +41,8 @@ export default async function ContactsPage({
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+      {/* --gradient-hero has been in the theme since day one; finally use it. */}
+      <header className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border bg-gradient-hero px-5 py-6 sm:px-6">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
             Contacts

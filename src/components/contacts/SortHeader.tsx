@@ -26,7 +26,7 @@ export default function SortHeader({
     : "none";
 
   return (
-    <th scope="col" aria-sort={ariaSort} className={`px-4 py-2.5 ${className}`}>
+    <th scope="col" aria-sort={ariaSort} className={`px-4 py-3 ${className}`}>
       <Link
         href={sortHref(query, field)}
         scroll={false}
