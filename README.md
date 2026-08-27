@@ -6,16 +6,29 @@ search, sort, page through, create, edit, and delete contacts.
 Next.js 16 (App Router) · TypeScript · Tailwind CSS · Zod · Jest + Testing Library
 + MSW · Playwright.
 
+## Highlights
+
 Beyond the CRUD basics:
 
-- **Contact photos** — drag-and-drop picker (1 MB cap, bitmap formats only), with
-  hue-stable initials avatars as the fallback.
-- **Multiple addresses** — up to 10 per contact, each tagged Home / Work / Other.
-- **Save to phone** — every detail page renders a QR code whose payload is the
-  contact's vCard, so a phone camera saves it straight to contacts; a `.vcf`
-  download carries the photo too.
-- **My card** (`/my-card`) — your own scannable card for events: LinkedIn and a
-  "Met at …" note travel inside the QR, generated entirely client-side.
+- **Contact photos** — a drag-and-drop picker with live *Preparing photo…*
+  feedback, filename-and-size summary, a 1 MB cap and a strict bitmap allowlist
+  (SVG is scriptable, so it never gets in). Contacts without a photo get an
+  initials avatar whose colour is derived from their email — stable per person,
+  in both themes.
+- **Multiple addresses** — up to 10 per contact, each tagged Home / Work /
+  Other, edited as repeating rows that survive validation round-trips.
+- **Save to phone** — every detail page renders a QR code whose payload *is*
+  the contact's vCard 3.0 (RFC 2426: escaped, 75-octet folded, UTF-8 safe), so
+  any phone camera saves it straight to contacts — no server round trip. The
+  `.vcf` download carries the photo too.
+- **My card** (`/my-card`) — the other direction: your own scannable card for
+  events. Type your details once; LinkedIn rides along as a `URL` property and
+  the venue as a `NOTE: Met at …`, all generated client-side. Save the QR as a
+  PNG and keep it in your photo library.
+- **A form that stays out of the way** — field groups as cards, a sticky
+  save bar that never scrolls out of reach, URL-held list state (search, sort,
+  pagination survive reload and are shareable), and everything works before
+  hydration because submits are real form POSTs.
 
 ## Requirements
 
@@ -35,6 +48,17 @@ The backend must be running (default `http://127.0.0.1:8000`). If it is not, the
 list page says so rather than blowing up, and the header badge shows
 `api unreachable`.
 
+### Try it in 60 seconds
+
+1. Open `/contacts` — the badge should read `api ok · sqlite`.
+2. **New contact** → drop a photo onto the dashed zone, add a couple of typed
+   addresses, hit the sticky **Create contact**.
+3. Open the contact you just made → point your phone camera at the
+   **Save to phone** QR — your phone offers to add them, addresses included.
+4. Visit **My card**, type your name, LinkedIn, and where you are → scan the
+   QR with any phone → your card lands in their contacts with a "Met at …"
+   note. Nothing you type there ever leaves the page.
+
 ### Environment variables
 
 Set in `.env.local` (copied from `.env.local.example`); only `NEXT_PUBLIC_*` ones
@@ -53,6 +77,10 @@ reach the browser.
 Use these two screenshots as the smoke test. If `http://localhost:3000` looks
 like this and the badge reads `api ok`, the frontend, the API, and the database
 are all wired up correctly and you can start building.
+
+> The screenshots predate the photo, address, and QR features — expect the live
+> app to show avatars with photos, typed address badges, and a Save to phone
+> card that the images below don't have yet.
 
 ### `/contacts` — the list
 
@@ -200,6 +228,28 @@ parallel with up to 8 workers; if your backend is a single-worker uvicorn on
 in-memory SQLite, that concurrency can wedge it — run `npm run test:e2e --
 --workers=2` (or `--project=chromium`) against a dev backend you don't mind
 restarting.
+
+## How it was built — the PR trail
+
+Every feature landed as its own reviewed pull request, and each one went
+through a full [Qodo](https://qodo.ai) review cycle: findings raised, fixed,
+and re-reviewed to zero open bugs before merging.
+
+| PR | What it shipped |
+| --- | --- |
+| [#1](https://github.com/Rikinshah787/sf-frontend/pull/1) | Contact photo upload with circular avatars |
+| [#2](https://github.com/Rikinshah787/sf-frontend/pull/2) | Many typed addresses per contact |
+| [#3](https://github.com/Rikinshah787/sf-frontend/pull/3) | Save to phone: QR code + vCard export |
+| [#4](https://github.com/Rikinshah787/sf-frontend/pull/4) | My card: pocket QR with LinkedIn and a "met at" note |
+| [#5](https://github.com/Rikinshah787/sf-frontend/pull/5) | Photo picker UX: drop zone, progress state, file summary |
+| [#6](https://github.com/Rikinshah787/sf-frontend/pull/6) | UX pass: form cards, sticky save, hero header |
+
+The API side (photo column, one-to-many Address table) lives in
+[sf-backend's PRs](https://github.com/Rikinshah787/sf-backend/pulls?q=is%3Apr+is%3Amerged).
+Review highlights worth reading: Qodo caught a Unicode line-folding bug in the
+vCard export (#3), a stale-QR race in My card (#4), and a drag-and-drop path
+that bypassed the photo format allowlist (#5) — each fixed and re-reviewed in
+the same PR.
 
 ## Deployment
 
