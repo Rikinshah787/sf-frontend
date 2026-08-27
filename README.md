@@ -1,10 +1,15 @@
 # sf-frontend
 
-Front end for the [Contacts API](http://127.0.0.1:8000/docs) — browse, search, sort,
-page through, create, edit, and delete contacts.
+Front end for the [Contacts API](https://github.com/Rikinshah787/sf-backend) — browse,
+search, sort, page through, create, edit, and delete contacts.
 
 Next.js 16 (App Router) · TypeScript · Tailwind CSS · Zod · Jest + Testing Library
 + MSW · Playwright.
+
+## Requirements
+
+- Node 20+ (Next.js 16's minimum)
+- The [Contacts API](https://github.com/Rikinshah787/sf-backend) running somewhere reachable
 
 ## Getting started
 
@@ -18,6 +23,19 @@ npm run dev                         # http://localhost:3000 -> /contacts
 The backend must be running (default `http://127.0.0.1:8000`). If it is not, the
 list page says so rather than blowing up, and the header badge shows
 `api unreachable`.
+
+### Environment variables
+
+Set in `.env.local` (copied from `.env.local.example`); only `NEXT_PUBLIC_*` ones
+reach the browser.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `API_BASE_URL` | `http://127.0.0.1:8000` | Contacts API base URL, read server-side only |
+| `API_TIMEOUT_MS` | `8000` | How long to wait before showing "unreachable" |
+| `NEXT_PUBLIC_API_BASE_URL` | – | Optional, for the rare client-component fetch; leave unset in production |
+| `NEXT_PUBLIC_APP_VERSION` / `NEXT_PUBLIC_BUILD_NUMBER` / `NEXT_PUBLIC_GIT_SHA` | derived | Version-stamp overrides, normally set by CI only |
+| `E2E_BASE_URL` | – | Point Playwright at an already-running server instead of starting one |
 
 ## What you should see
 
