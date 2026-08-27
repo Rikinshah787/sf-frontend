@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, Pencil } from "lucide-react";
 import ContactAvatar from "@/components/contacts/ContactAvatar";
 import DeleteContactButton from "@/components/contacts/DeleteContactButton";
+import SaveToPhoneCard from "@/components/contacts/SaveToPhoneCard";
 import { buttonClasses } from "@/components/ui/Button";
 import { getContact } from "@/lib/contacts/api";
 import { addressLine, formatTimestamp, jobLine } from "@/lib/contacts/format";
@@ -130,6 +131,8 @@ export default async function ContactDetailPage({ params }: PageProps) {
           ) : null}
         </Row>
       </dl>
+
+      <SaveToPhoneCard contact={contact} />
 
       <dl className="rounded-lg border border-border bg-card/50 text-[13px]">
         <Row label="ID">
