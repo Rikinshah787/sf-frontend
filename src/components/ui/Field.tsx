@@ -2,7 +2,7 @@ import PhotoInput from "@/components/contacts/PhotoInput";
 import type { ContactFieldSpec } from "@/lib/contacts/schema";
 
 export const CONTROL =
-  "w-full rounded-md border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 transition-colors focus:bg-input";
+  "w-full rounded-md border bg-input px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground/60 transition-colors focus:bg-input";
 
 /**
  * One labelled form control, driven by the field metadata in

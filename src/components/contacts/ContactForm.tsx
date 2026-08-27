@@ -90,10 +90,13 @@ export default function ContactForm({
       ) : null}
 
       {CONTACT_FIELD_GROUPS.map((group) => (
-        <fieldset key={group.title} className="space-y-4">
+        <fieldset
+          key={group.title}
+          className="space-y-4 rounded-lg border border-border bg-card p-5"
+        >
           <legend className="sr-only">{group.title}</legend>
 
-          <div className="border-b border-hairline pb-2">
+          <div className="border-b border-hairline pb-3">
             <h2 className="font-display text-sm font-semibold text-foreground">
               {group.title}
             </h2>
@@ -115,10 +118,10 @@ export default function ContactForm({
         </fieldset>
       ))}
 
-      <fieldset className="space-y-4">
+      <fieldset className="space-y-4 rounded-lg border border-border bg-card p-5">
         <legend className="sr-only">Addresses</legend>
 
-        <div className="border-b border-hairline pb-2">
+        <div className="border-b border-hairline pb-3">
           <h2 className="font-display text-sm font-semibold text-foreground">
             Addresses
           </h2>
@@ -136,7 +139,8 @@ export default function ContactForm({
         <AddressesEditor initial={initialAddresses} />
       </fieldset>
 
-      <div className="flex items-center gap-2 border-t border-hairline pt-4">
+      {/* Sticky so Save stays reachable however long the address list grows. */}
+      <div className="sticky bottom-0 z-10 flex items-center gap-2 rounded-lg border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur">
         <SubmitButton label={submitLabel} />
         <Link href={cancelHref} className={buttonClasses("secondary")}>
           Cancel
