@@ -19,19 +19,35 @@ function escapeText(value: string): string {
     .replace(/\r\n|\r|\n/g, "\\n");
 }
 
+/** Octets a code point occupies once UTF-8 encoded (RFC 3629). */
+function utf8Size(codePoint: number): number {
+  if (codePoint <= 0x7f) return 1;
+  if (codePoint <= 0x7ff) return 2;
+  if (codePoint <= 0xffff) return 3;
+  return 4;
+}
+
 /**
- * Fold a content line at 75 characters with a space-prefixed continuation.
- * Only ASCII lines are folded (in practice just the base64 photo, by far the
- * longest line) so a fold can never split a multi-byte UTF-8 sequence; parsers
- * accept the occasional long line, but not a broken character.
+ * Fold a content line at 75 UTF-8 octets with a space-prefixed continuation
+ * (RFC 2426 §2.6). Counting octets per code point means a fold can land
+ * between characters but never inside a multi-byte UTF-8 sequence.
  */
 function foldLine(line: string): string {
-  if (line.length <= 75 || /[^\x20-\x7e]/.test(line)) return line;
-  const chunks = [line.slice(0, 75)];
-  for (let i = 75; i < line.length; i += 74) {
-    chunks.push(` ${line.slice(i, i + 74)}`);
+  const folded: string[] = [];
+  let current = "";
+  let octets = 0;
+  for (const char of line) {
+    const size = utf8Size(char.codePointAt(0) ?? 0);
+    if (octets + size > 75) {
+      folded.push(current);
+      current = " "; // continuation lines start with one space (one octet)
+      octets = 1;
+    }
+    current += char;
+    octets += size;
   }
-  return chunks.join(CRLF);
+  folded.push(current);
+  return folded.join(CRLF);
 }
 
 /** `ADR` component order: PO box, extended, street, locality, region, postal, country. */

@@ -81,6 +81,18 @@ describe("contactToVCard", () => {
     expect(vcard.replace(/\r\n /g, "")).toContain("A".repeat(200));
   });
 
+  it("folds long Unicode lines on UTF-8 octet boundaries", () => {
+    // 'ü' is 2 octets in UTF-8, so 120 of them (240 octets) must fold without
+    // ever splitting a character or exceeding 75 octets per physical line.
+    const vcard = contactToVCard(makeContact({ notes: "ü".repeat(120) }));
+
+    const encoder = new TextEncoder();
+    for (const line of vcard.split("\r\n")) {
+      expect(encoder.encode(line).length).toBeLessThanOrEqual(75);
+    }
+    expect(vcard.replace(/\r\n /g, "")).toContain(`NOTE:${"ü".repeat(120)}`);
+  });
+
   it("omits the photo when asked, or when the data URL is not a safe image", () => {
     expect(
       contactToVCard(makeContact({ photo: PNG_DATA_URL }), { includePhoto: false }),
