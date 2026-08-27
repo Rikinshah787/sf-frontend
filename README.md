@@ -1,5 +1,7 @@
 # sf-frontend
 
+<img width="1899" height="987" alt="image" src="https://github.com/user-attachments/assets/a46ff084-f321-4836-8366-5c42a9c7c7f4" />
+
 Front end for the [Contacts API](https://github.com/Rikinshah787/sf-backend) — browse,
 search, sort, page through, create, edit, and delete contacts.
 
