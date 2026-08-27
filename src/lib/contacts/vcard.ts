@@ -109,6 +109,77 @@ export function contactToVCard(contact: Contact, options: VCardOptions = {}): st
   return lines.map(foldLine).join(CRLF) + CRLF;
 }
 
+/**
+ * The "My card" page builds a vCard for the app's owner rather than a stored
+ * contact: a QR of this card is what you show at an event, and whoever scans
+ * it gets your details, your LinkedIn as a URL property, and a "Met at …"
+ * note so the meeting place travels with the card.
+ */
+export type MyCard = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  company: string;
+  job_title: string;
+  linkedin: string;
+  event: string;
+};
+
+/**
+ * Normalise a user-typed web address: strip whitespace and control characters
+ * (which could otherwise inject extra vCard lines), default to https:// when
+ * no scheme was typed, and return null for anything the URL parser rejects.
+ * http(s) only — a vCard URL is a link, not a launcher.
+ */
+export function normalizeWebUrl(value: string): string | null {
+  const cleaned = value.replace(/[\s\u0000-\u001f\u007f]+/g, "");
+  if (!cleaned) return null;
+  // A typed scheme other than http(s) is rejected outright — prepending
+  // https:// to something like "ftp://…" would still parse, just wrongly.
+  const isHttp = /^https?:\/\//i.test(cleaned);
+  if (!isHttp && /^[a-z][a-z0-9+.-]*:/i.test(cleaned)) return null;
+  try {
+    return new URL(isHttp ? cleaned : `https://${cleaned}`).toString();
+  } catch {
+    return null;
+  }
+}
+
+/** Serialise the owner's card as vCard 3.0. Blank fields are simply omitted. */
+export function myCardToVCard(card: MyCard): string {
+  const first = card.first_name.trim();
+  const last = card.last_name.trim();
+  const fullName = [first, last].filter(Boolean).join(" ");
+
+  const lines = [
+    "BEGIN:VCARD",
+    "VERSION:3.0",
+    `N:${escapeText(last)};${escapeText(first)};;;`,
+    `FN:${escapeText(fullName)}`,
+  ];
+
+  const email = card.email.trim();
+  if (email) lines.push(`EMAIL;TYPE=INTERNET:${escapeText(email)}`);
+  const phone = card.phone.trim();
+  if (phone) lines.push(`TEL;TYPE=VOICE:${escapeText(phone)}`);
+  const company = card.company.trim();
+  if (company) lines.push(`ORG:${escapeText(company)}`);
+  const jobTitle = card.job_title.trim();
+  if (jobTitle) lines.push(`TITLE:${escapeText(jobTitle)}`);
+
+  // URL is a uri-typed value (RFC 2426 §3.6.8), so it is not text-escaped;
+  // normalizeWebUrl already removed every character that could break a line.
+  const linkedin = normalizeWebUrl(card.linkedin);
+  if (linkedin) lines.push(`URL;TYPE=WORK:${linkedin}`);
+
+  const event = card.event.trim();
+  if (event) lines.push(`NOTE:${escapeText(`Met at ${event}`)}`);
+
+  lines.push("END:VCARD");
+  return lines.map(foldLine).join(CRLF) + CRLF;
+}
+
 /** "ada-lovelace.vcf"-style download name, with a stable fallback. */
 export function vcardFileName(contact: Contact): string {
   const slug = contact.full_name
