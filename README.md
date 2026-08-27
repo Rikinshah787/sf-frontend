@@ -6,6 +6,17 @@ search, sort, page through, create, edit, and delete contacts.
 Next.js 16 (App Router) · TypeScript · Tailwind CSS · Zod · Jest + Testing Library
 + MSW · Playwright.
 
+Beyond the CRUD basics:
+
+- **Contact photos** — drag-and-drop picker (1 MB cap, bitmap formats only), with
+  hue-stable initials avatars as the fallback.
+- **Multiple addresses** — up to 10 per contact, each tagged Home / Work / Other.
+- **Save to phone** — every detail page renders a QR code whose payload is the
+  contact's vCard, so a phone camera saves it straight to contacts; a `.vcf`
+  download carries the photo too.
+- **My card** (`/my-card`) — your own scannable card for events: LinkedIn and a
+  "Met at …" note travel inside the QR, generated entirely client-side.
+
 ## Requirements
 
 - Node 20.9+ (Next.js 16's engine floor)
@@ -81,8 +92,11 @@ Click a row to get here. It confirms the detail read path works end to end:
 - **Header** — avatar, name, and `Job title at Company`, with **Edit**
   (`/contacts/[id]/edit`) and a destructive **Delete** that asks before it acts.
 - **Field table** — email and phone rendered as `mailto:` / `tel:` links, then
-  company, job title, address, and notes. Empty optional fields show `—` rather
-  than collapsing, so the shape of the record stays readable.
+  company, job title, the typed address list (Home / Work / Other badges), and
+  notes. Empty optional fields show `—` rather than collapsing, so the shape of
+  the record stays readable.
+- **Save to phone** — a QR code a phone camera recognises as a contact card,
+  plus a `.vcf` download with every field and the photo embedded.
 - **Metadata table** — `ID`, `Created`, and `Last updated` in UTC, monospaced.
 
 Hand-editing the URL to an ID that does not exist gives you the styled 404 page
@@ -113,6 +127,7 @@ Hand-editing the URL to an ID that does not exist gives you the styled 404 page
 | `/contacts/new`      | Create form                                                       |
 | `/contacts/[id]`     | Detail view with edit/delete                                      |
 | `/contacts/[id]/edit`| Edit form (`PUT`, i.e. a full replacement)                        |
+| `/my-card`           | Your own QR contact card — client-side only, never touches the API |
 
 ## Layout
 
