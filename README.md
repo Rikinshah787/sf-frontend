@@ -1,4 +1,4 @@
-# sf-frontend
+# Frontend Modern Contact Management with QR-Powered Networking
 
 <img width="1899" height="987" alt="image" src="https://github.com/user-attachments/assets/a46ff084-f321-4836-8366-5c42a9c7c7f4" />
 
