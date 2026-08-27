@@ -7,8 +7,18 @@ import Button from "@/components/ui/Button";
 /** Client-side cap on the picked file itself (the base64 form grows ~4/3). */
 export const MAX_PHOTO_BYTES = 1024 * 1024;
 
-/** Matches the client/server validation: bitmap images only, never SVG. */
-const ACCEPT = "image/png,image/jpeg,image/webp,image/bmp";
+/**
+ * One allowlist for both the file picker and the drag-and-drop path, so a
+ * dropped file follows exactly the rules the picker advertises. Bitmap
+ * formats only — SVG stays out because it is scriptable.
+ */
+const ACCEPTED_TYPES: readonly string[] = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/bmp",
+];
+const ACCEPT = ACCEPTED_TYPES.join(",");
 
 /** "438 KB"-style size for the picked-file summary. */
 function formatSize(bytes: number): string {
@@ -47,10 +57,8 @@ export default function PhotoInput({
   function readFile(picked: File) {
     setRemoved(false);
 
-    if (!picked.type.startsWith("image/") || picked.type === "image/svg+xml") {
-      // SVG is rejected by the API too: it is scriptable, so it is unsafe to
-      // store and echo back as an <img> source.
-      setPickError("Choose a bitmap image (PNG, JPEG, WebP…) — SVG isn't supported.");
+    if (!ACCEPTED_TYPES.includes(picked.type)) {
+      setPickError("Choose a PNG, JPEG, WebP or BMP image — other formats aren't supported.");
       return;
     }
     if (picked.size > MAX_PHOTO_BYTES) {
