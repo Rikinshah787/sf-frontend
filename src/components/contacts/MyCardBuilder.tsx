@@ -61,39 +61,51 @@ const QR_OPTIONS = {
  */
 export default function MyCardBuilder() {
   const [card, setCard] = useState<MyCard>(EMPTY_CARD);
-  const [qrSrc, setQrSrc] = useState<string | null>(null);
+  // The QR is stored WITH the payload it encodes, and only shown while that
+  // payload still matches the typed card — so an edit can never leave an old
+  // code on screen, and the PNG download always serialises what is displayed.
+  const [qr, setQr] = useState<{ payload: string; src: string | null } | null>(null);
 
   const hasName = Boolean(card.first_name.trim() || card.last_name.trim());
   const linkedinInvalid = Boolean(card.linkedin.trim()) && !normalizeWebUrl(card.linkedin);
+  const vcard = hasName ? myCardToVCard(card) : null;
 
   useEffect(() => {
-    if (!hasName) return;
+    if (!vcard) return;
 
     let cancelled = false;
-    QRCode.toString(myCardToVCard(card), { ...QR_OPTIONS, type: "svg" })
+    QRCode.toString(vcard, { ...QR_OPTIONS, type: "svg" })
       .then((svg) => {
         if (!cancelled) {
-          setQrSrc(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
+          setQr({
+            payload: vcard,
+            src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+          });
         }
       })
       .catch(() => {
-        // Payload too large for a QR code — hide it rather than show a stale one.
-        if (!cancelled) setQrSrc(null);
+        // Payload too large for a QR code — remember that for THIS payload.
+        if (!cancelled) setQr({ payload: vcard, src: null });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [card, hasName]);
+  }, [vcard]);
 
   function update(name: keyof MyCard, value: string) {
     setCard((current) => ({ ...current, [name]: value }));
   }
 
+  const current = vcard !== null && qr?.payload === vcard ? qr : null;
+  const showQr = current?.src ?? null;
+  const overflow = current !== null && current.src === null;
+
   /** A large PNG suits a phone photo library better than an SVG data URL. */
   async function downloadPng() {
+    if (!current?.src) return;
     try {
-      const url = await QRCode.toDataURL(myCardToVCard(card), {
+      const url = await QRCode.toDataURL(current.payload, {
         ...QR_OPTIONS,
         width: 640,
       });
@@ -102,17 +114,12 @@ export default function MyCardBuilder() {
       anchor.download = "my-card-qr.png";
       anchor.click();
     } catch {
-      // Same overflow case as above; the button is hidden when qrSrc is null,
-      // so this is only reachable in a race and safe to ignore.
+      // toDataURL accepts anything toString did; nothing sensible to do here.
     }
   }
 
-  // The effect never clears state, so gate on the name here: clearing your
-  // name hides the (now stale) code instead of leaving it on screen.
-  const showQr = hasName ? qrSrc : null;
-
-  const vcfHref = hasName
-    ? `data:text/vcard;charset=utf-8,${encodeURIComponent(myCardToVCard(card))}`
+  const vcfHref = vcard
+    ? `data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}`
     : null;
 
   return (
@@ -172,10 +179,12 @@ export default function MyCardBuilder() {
           ) : (
             <div className="flex h-52 w-52 flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border text-muted-foreground">
               <QrCode className="h-8 w-8" strokeWidth={1.5} aria-hidden="true" />
-              <p className="px-6 text-[13px] leading-snug">
-                {hasName
-                  ? "This card is too long to fit in a QR code — trim a field or two."
-                  : "Type your name and the code appears here."}
+              <p className="px-6 text-[13px] leading-snug" aria-live="polite">
+                {overflow
+                  ? "This card is too long to fit in a QR code — trim a field or two. The .vcf download still has everything."
+                  : hasName
+                    ? "Generating your code…"
+                    : "Type your name and the code appears here."}
               </p>
             </div>
           )}
@@ -185,21 +194,22 @@ export default function MyCardBuilder() {
             LinkedIn and where you met included.
           </p>
 
-          {showQr ? (
+          {vcfHref ? (
             <div className="flex flex-wrap justify-center gap-2">
-              <Button type="button" onClick={downloadPng}>
-                <Download className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
-                Save QR to phone
-              </Button>
-              {vcfHref ? (
-                <a
-                  href={vcfHref}
-                  download="my-card.vcf"
-                  className={buttonClasses("secondary")}
-                >
-                  Download .vcf
-                </a>
+              {showQr ? (
+                <Button type="button" onClick={downloadPng}>
+                  <Download className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+                  Save QR to phone
+                </Button>
               ) : null}
+              {/* The .vcf has no size limit, so it stays even when the QR overflows. */}
+              <a
+                href={vcfHref}
+                download="my-card.vcf"
+                className={buttonClasses(showQr ? "secondary" : "primary")}
+              >
+                Download .vcf
+              </a>
             </div>
           ) : null}
         </section>
