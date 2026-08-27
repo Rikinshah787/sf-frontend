@@ -1,4 +1,10 @@
-import { contactToVCard, vcardFileName } from "@/lib/contacts/vcard";
+import {
+  contactToVCard,
+  myCardToVCard,
+  normalizeWebUrl,
+  vcardFileName,
+  type MyCard,
+} from "@/lib/contacts/vcard";
 import { makeContact } from "../../mocks/handlers";
 
 const PNG_DATA_URL =
@@ -111,6 +117,93 @@ describe("contactToVCard", () => {
   it("records the update timestamp as REV and drops it when unparsable", () => {
     expect(contactToVCard(makeContact())).toContain("REV:2026-08-19T17:04:53.743Z");
     expect(contactToVCard(makeContact({ updated_at: "not-a-date" }))).not.toContain("REV:");
+  });
+});
+
+function makeMyCard(overrides: Partial<MyCard> = {}): MyCard {
+  return {
+    first_name: "Rikin",
+    last_name: "Shah",
+    email: "rikin@example.com",
+    phone: "",
+    company: "",
+    job_title: "",
+    linkedin: "linkedin.com/in/rikin-shah",
+    event: "GitHub HQ hackathon",
+    ...overrides,
+  };
+}
+
+describe("normalizeWebUrl", () => {
+  it("defaults to https:// when no scheme was typed", () => {
+    expect(normalizeWebUrl("linkedin.com/in/ada")).toBe("https://linkedin.com/in/ada");
+    expect(normalizeWebUrl("http://example.com/x")).toBe("http://example.com/x");
+  });
+
+  it("strips whitespace and control characters before parsing", () => {
+    expect(normalizeWebUrl("  linkedin.com/in/ada \r\nNOTE:injected")).toBe(
+      "https://linkedin.com/in/adaNOTE:injected",
+    );
+    expect(normalizeWebUrl("\t \n")).toBeNull();
+  });
+
+  it("rejects unparsable values and non-http(s) schemes", () => {
+    expect(normalizeWebUrl("https://")).toBeNull();
+    expect(normalizeWebUrl("javascript:alert(1)")).toBeNull();
+  });
+});
+
+describe("myCardToVCard", () => {
+  it("builds a minimal card with name, email, URL and the meeting note", () => {
+    const out = lines(myCardToVCard(makeMyCard()));
+
+    expect(out[0]).toBe("BEGIN:VCARD");
+    expect(out).toContain("N:Shah;Rikin;;;");
+    expect(out).toContain("FN:Rikin Shah");
+    expect(out).toContain("EMAIL;TYPE=INTERNET:rikin@example.com");
+    expect(out).toContain("URL;TYPE=WORK:https://linkedin.com/in/rikin-shah");
+    expect(out).toContain("NOTE:Met at GitHub HQ hackathon");
+    expect(out[out.length - 1]).toBe("END:VCARD");
+  });
+
+  it("omits blank fields entirely", () => {
+    const vcard = myCardToVCard(
+      makeMyCard({ email: " ", phone: "", company: "", job_title: "", linkedin: "", event: "  " }),
+    );
+
+    for (const property of ["EMAIL", "TEL", "ORG", "TITLE", "URL", "NOTE"]) {
+      expect(vcard).not.toContain(property);
+    }
+  });
+
+  it("escapes text fields but leaves the URL value un-escaped", () => {
+    const out = lines(
+      myCardToVCard(
+        makeMyCard({
+          company: "Piano; Forte, Ltd",
+          event: "expo, hall B",
+          linkedin: "https://example.com/a,b",
+        }),
+      ),
+    );
+
+    expect(out).toContain("ORG:Piano\\; Forte\\, Ltd");
+    expect(out).toContain("NOTE:Met at expo\\, hall B");
+    expect(out).toContain("URL;TYPE=WORK:https://example.com/a,b");
+  });
+
+  it("drops an invalid LinkedIn value instead of emitting a broken URL", () => {
+    expect(myCardToVCard(makeMyCard({ linkedin: "ftp://example.com" }))).not.toContain("URL");
+  });
+
+  it("folds long lines like the contact export does", () => {
+    const vcard = myCardToVCard(makeMyCard({ event: "ü".repeat(120) }));
+
+    const encoder = new TextEncoder();
+    for (const line of vcard.split("\r\n")) {
+      expect(encoder.encode(line).length).toBeLessThanOrEqual(75);
+    }
+    expect(vcard.replace(/\r\n /g, "")).toContain(`NOTE:Met at ${"ü".repeat(120)}`);
   });
 });
 

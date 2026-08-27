@@ -21,6 +21,11 @@ const NAV_LINKS: {
     href: "/contacts/new",
     match: (path) => path === "/contacts/new",
   },
+  {
+    label: "My card",
+    href: "/my-card",
+    match: (path) => path === "/my-card",
+  },
 ];
 
 function Wordmark() {
