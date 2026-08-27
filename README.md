@@ -8,7 +8,7 @@ Next.js 16 (App Router) · TypeScript · Tailwind CSS · Zod · Jest + Testing L
 
 ## Requirements
 
-- Node 20+ (Next.js 16's minimum)
+- Node 20.9+ (Next.js 16's engine floor)
 - The [Contacts API](https://github.com/Rikinshah787/sf-backend) running somewhere reachable
 
 ## Getting started
