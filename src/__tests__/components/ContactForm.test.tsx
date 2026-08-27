@@ -36,6 +36,23 @@ describe("ContactForm", () => {
     expect(screen.getByLabelText(/street address/i)).toHaveValue("");
   });
 
+  it("adds an address row and submits its named controls", async () => {
+    const action = jest.fn<Promise<FormState>, [FormState, FormData]>(
+      async () => ({ status: "idle" }),
+    );
+    renderForm(action);
+
+    await userEvent.click(screen.getByRole("button", { name: /add address/i }));
+    await userEvent.type(screen.getByLabelText(/^city/i), "Berlin");
+    await userEvent.selectOptions(screen.getByLabelText(/type/i), "work");
+    await userEvent.click(screen.getByRole("button", { name: /create contact/i }));
+
+    await waitFor(() => expect(action).toHaveBeenCalled());
+    const formData = action.mock.calls[0][1];
+    expect(formData.get("addresses.0.city")).toBe("Berlin");
+    expect(formData.get("addresses.0.type")).toBe("work");
+  });
+
   it("submits the entered values to the action", async () => {
     const action = jest.fn<Promise<FormState>, [FormState, FormData]>(
       async () => ({ status: "idle" }),

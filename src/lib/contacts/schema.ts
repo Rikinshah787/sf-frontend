@@ -1,5 +1,12 @@
 import { z } from "zod";
-import type { ContactInput } from "./types";
+import {
+  ADDRESS_TYPES,
+  MAX_ADDRESSES,
+  type AddressFormRow,
+  type AddressInput,
+  type ContactInput,
+  type FlatContactField,
+} from "./types";
 
 /**
  * Client/server-shared validation for the contact form.
@@ -45,6 +52,15 @@ function requiredText(max: number, label: string) {
     .max(max, `${label} must be ${max} characters or fewer`);
 }
 
+export const addressInputSchema = z.object({
+  type: z.enum(ADDRESS_TYPES, "Choose Home, Work, or Other"),
+  address: optionalText(300, "Street address"),
+  city: optionalText(120, "City"),
+  state: optionalText(120, "State"),
+  postal_code: optionalText(20, "Postal code"),
+  country: optionalText(120, "Country"),
+}) satisfies z.ZodType<AddressInput, unknown>;
+
 export const contactInputSchema = z.object({
   first_name: requiredText(100, "First name"),
   last_name: requiredText(100, "Last name"),
@@ -58,11 +74,10 @@ export const contactInputSchema = z.object({
   phone: optionalText(40, "Phone"),
   company: optionalText(200, "Company"),
   job_title: optionalText(200, "Job title"),
-  address: optionalText(300, "Address"),
-  city: optionalText(120, "City"),
-  state: optionalText(120, "State"),
-  postal_code: optionalText(20, "Postal code"),
-  country: optionalText(120, "Country"),
+  addresses: z
+    .array(addressInputSchema)
+    .max(MAX_ADDRESSES, `A contact can have at most ${MAX_ADDRESSES} addresses`)
+    .default([]),
   notes: z
     .string()
     .trim()
@@ -104,7 +119,7 @@ export function zodFieldErrors(
 /* ------------------------------------------------------------------ */
 
 export interface ContactFieldSpec {
-  name: keyof ContactInput;
+  name: FlatContactField;
   label: string;
   type?: "text" | "email" | "tel" | "textarea" | "photo";
   required?: boolean;
@@ -189,48 +204,6 @@ export const CONTACT_FIELD_GROUPS: ContactFieldGroup[] = [
     ],
   },
   {
-    title: "Address",
-    description: "Optional postal details.",
-    fields: [
-      {
-        name: "address",
-        label: "Street address",
-        maxLength: 300,
-        placeholder: "1 Market St, Suite 400",
-        autoComplete: "street-address",
-        wide: true,
-      },
-      {
-        name: "city",
-        label: "City",
-        maxLength: 120,
-        placeholder: "San Francisco",
-        autoComplete: "address-level2",
-      },
-      {
-        name: "state",
-        label: "State / region",
-        maxLength: 120,
-        placeholder: "CA",
-        autoComplete: "address-level1",
-      },
-      {
-        name: "postal_code",
-        label: "Postal code",
-        maxLength: 20,
-        placeholder: "94105",
-        autoComplete: "postal-code",
-      },
-      {
-        name: "country",
-        label: "Country",
-        maxLength: 120,
-        placeholder: "USA",
-        autoComplete: "country-name",
-      },
-    ],
-  },
-  {
     title: "Notes",
     description: "Anything worth remembering. No length limit.",
     fields: [
@@ -250,14 +223,69 @@ export const CONTACT_FIELDS: ContactFieldSpec[] = CONTACT_FIELD_GROUPS.flatMap(
   (group) => group.fields,
 );
 
-/** Pull the contact fields out of a submitted form, as raw strings. */
+/** Per-address form controls, rendered by `AddressesEditor` for every row. */
+export interface AddressFieldSpec {
+  name: keyof AddressInput;
+  label: string;
+  maxLength: number;
+  placeholder?: string;
+  wide?: boolean;
+}
+
+export const ADDRESS_FIELDS: AddressFieldSpec[] = [
+  {
+    name: "address",
+    label: "Street address",
+    maxLength: 300,
+    placeholder: "1 Market St, Suite 400",
+    wide: true,
+  },
+  { name: "city", label: "City", maxLength: 120, placeholder: "San Francisco" },
+  { name: "state", label: "State / region", maxLength: 120, placeholder: "CA" },
+  { name: "postal_code", label: "Postal code", maxLength: 20, placeholder: "94105" },
+  { name: "country", label: "Country", maxLength: 120, placeholder: "USA" },
+];
+
+/** Pull the flat contact fields out of a submitted form, as raw strings. */
 export function formDataToValues(
   formData: FormData,
-): Record<keyof ContactInput, string> {
+): Record<FlatContactField, string> {
   return Object.fromEntries(
     CONTACT_FIELDS.map((field) => [
       field.name,
       String(formData.get(field.name) ?? ""),
     ]),
-  ) as Record<keyof ContactInput, string>;
+  ) as Record<FlatContactField, string>;
+}
+
+/**
+ * Rebuild the address rows from a submitted form. `AddressesEditor` names its
+ * controls `addresses.<row>.<field>`; rows removed in the UI simply never
+ * submit, so the surviving indexes are compacted here.
+ *
+ * Storage is a Map keyed by index (never a sparse array) and indexes are
+ * capped at three digits, so a crafted `addresses.1000000000.city` payload
+ * cannot force a huge traversal; row counts beyond MAX_ADDRESSES are then
+ * rejected by the schema.
+ */
+export function formDataToAddresses(formData: FormData): AddressFormRow[] {
+  const rows = new Map<number, Partial<AddressFormRow>>();
+  for (const [key, value] of formData.entries()) {
+    const match = /^addresses\.(\d{1,3})\.(type|address|city|state|postal_code|country)$/.exec(key);
+    if (!match) continue;
+    const index = Number(match[1]);
+    const row = rows.get(index) ?? {};
+    row[match[2] as keyof AddressInput] = String(value);
+    rows.set(index, row);
+  }
+  return [...rows.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([, row]) => ({
+      type: row.type ?? "home",
+      address: row.address ?? "",
+      city: row.city ?? "",
+      state: row.state ?? "",
+      postal_code: row.postal_code ?? "",
+      country: row.country ?? "",
+    }));
 }

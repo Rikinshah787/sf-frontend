@@ -12,6 +12,7 @@ import {
 } from "@/lib/contacts/api";
 import {
   contactInputSchema,
+  formDataToAddresses,
   formDataToValues,
   zodFieldErrors,
 } from "@/lib/contacts/schema";
@@ -38,7 +39,10 @@ export async function saveContactAction(
   _prevState: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const values = formDataToValues(formData);
+  const values = {
+    ...formDataToValues(formData),
+    addresses: formDataToAddresses(formData),
+  };
 
   const parsed = contactInputSchema.safeParse(values);
   if (!parsed.success) {
